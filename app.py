@@ -161,7 +161,7 @@ def process_pdf(input_pdf_bytes, template_path):
 def main():
     st.set_page_config(
         page_title="برنامج الفحص الشامل",
-        page_icon="🏥",
+        page_icon="",
         layout="centered",
         initial_sidebar_state="collapsed"
     )
@@ -169,15 +169,17 @@ def main():
     template_exists = os.path.exists(TEMPLATE_FILE)
     
     if not template_exists:
-        st.error("❌ ملف الهيدر الثابت غير موجود!")
+        st.error(" ملف الهيدر الثابت غير موجود!")
         return
     
-    # 1. اللوجو - بدون أي قيود على الارتفاع
+    # 1. اللوجو - عرض كامل بدون قص باستخدام HTML
     logo_exists = os.path.exists(LOGO_FILE)
     if logo_exists:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image(LOGO_FILE, use_container_width=True)
+        st.markdown(f"""
+        <div style="text-align: center; margin: 10px 0 15px 0;">
+            <img src="{LOGO_FILE}" style="width: 100%; max-width: 700px; height: auto; display: block; margin: 0 auto;" />
+        </div>
+        """, unsafe_allow_html=True)
     
     # 2. العنوان
     st.markdown("""
@@ -225,7 +227,7 @@ def main():
     
     if start_button:
         if not uploaded_files:
-            st.error(" يرجى رفع ملفات النتائج أولاً")
+            st.error("❌ يرجى رفع ملفات النتائج أولاً")
             return
         
         progress_bar = st.progress(0)
@@ -251,35 +253,57 @@ def main():
         status_text.empty()
         progress_bar.empty()
         
-        st.success(f"✅ تم معالجة {len(processed_files)} ملف بنجاح!")
-        
-        st.markdown("---")
-        
-        # 6. زر تحميل واحد فقط
-        if len(processed_files) == 1:
-            # ملف واحد - تحميل مباشر
-            st.download_button(
-                label=f"📥 تحميل {processed_files[0]['name']}",
-                data=processed_files[0]['data'],
-                file_name=processed_files[0]['name'],
-                mime="application/pdf",
-                use_container_width=True
-            )
-        else:
-            # ملفات متعددة - تحميل كـ ZIP
-            zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                for file_info in processed_files:
-                    zip_file.writestr(file_info['name'], file_info['data'])
-            zip_buffer.seek(0)
+        # 6. زر التحميل (يظهر مباشرة بعد المعالجة بدون إشعار)
+        if len(processed_files) > 0:
+            # تحضير البيانات للتحميل
+            if len(processed_files) == 1:
+                download_data = processed_files[0]['data']
+                download_filename = processed_files[0]['name']
+                download_mime = "application/pdf"
+            else:
+                zip_buffer = BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for file_info in processed_files:
+                        zip_file.writestr(file_info['name'], file_info['data'])
+                zip_buffer.seek(0)
+                download_data = zip_buffer.getvalue()
+                download_filename = f"reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                download_mime = "application/zip"
             
-            st.download_button(
-                label=f" تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
-                data=zip_buffer.getvalue(),
-                file_name=f"reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                mime="application/zip",
-                use_container_width=True
-            )
+            # زر التحميل الأخضر بنفس حجم وشكل زر بدء المعالجة
+            col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
+            with col_d2:
+                st.download_button(
+                    label="التحميل",
+                    data=download_data,
+                    file_name=download_filename,
+                    mime=download_mime,
+                    use_container_width=True,
+                    key="download_button"
+                )
+            
+            # CSS مخصص لجعل زر التحميل أخضر
+            st.markdown("""
+            <style>
+                a[data-testid="stDownloadButton-download_button"] > button {
+                    background: #2e7d32 !important;
+                    color: white !important;
+                    border: none !important;
+                    padding: 12px 40px !important;
+                    border-radius: 8px !important;
+                    font-weight: bold !important;
+                    font-size: 1.1em !important;
+                    transition: all 0.3s ease !important;
+                    box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3) !important;
+                    width: 100% !important;
+                }
+                a[data-testid="stDownloadButton-download_button"] > button:hover {
+                    background: #388e3c !important;
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 5px 12px rgba(46, 125, 50, 0.4) !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

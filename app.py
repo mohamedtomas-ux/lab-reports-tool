@@ -4,7 +4,7 @@ import zipfile
 from datetime import datetime
 from io import BytesIO
 
-import fitz  # PyMuPDF
+import fitz
 import streamlit as st
 
 # ---------------- الإعدادات ----------------
@@ -31,7 +31,7 @@ CSS = """
     }
 
     .logo-wrap { text-align: center; margin: 10px 0 15px 0; }
-    .logo-wrap img { width: 100%; max-width: 600px; height: auto; }
+    .logo-wrap img { width: 100%; max-width: 700px; height: auto; }
 
     .main-title { text-align: center; direction: rtl; margin: 5px 0 15px 0; }
     .main-title h1 { margin: 5px 0 2px 0 !important; font-size: 1.6em !important; font-weight: 700; color: #000; }
@@ -62,7 +62,6 @@ CSS = """
         box-shadow: 0 3px 8px rgba(139,26,26,.3) !important;
     }
     .stButton > button:hover { background: #A52A2A !important; transform: translateY(-2px) !important; }
-    .stButton > button:disabled { background: #c9a0a0 !important; box-shadow: none !important; }
 
     /* زر التحميل (أخضر صلب) */
     [data-testid="stDownloadButton"] button,
@@ -168,24 +167,6 @@ def build_download(processed):
     return buf.getvalue(), fname, "application/zip"
 
 
-def get_page_count(pdf_bytes):
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        return len(doc)
-    finally:
-        doc.close()
-
-
-def render_page(pdf_bytes, page_no, zoom=1.6):
-    """بترجّع صورة PNG للصفحة المطلوبة (page_no يبدأ من 0)."""
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        pix = doc[page_no].get_pixmap(matrix=fitz.Matrix(zoom, zoom))
-        return pix.tobytes("png")
-    finally:
-        doc.close()
-
-
 # ---------------- الواجهة ----------------
 def main():
     st.set_page_config(
@@ -271,46 +252,15 @@ def main():
         if processed:
             data, fname, mime = build_download(processed)
             st.session_state["result"] = {
-                "data": data, "name": fname, "mime": mime,
-                "count": len(processed),
-                "files": processed,  # عشان المعاينة
+                "data": data, "name": fname, "mime": mime, "count": len(processed),
             }
         else:
             st.session_state.pop("result", None)
 
-    # النتيجة خارج الـ if عشان تفضل ظاهرة بعد أي rerun
+    # زر التحميل خارج if عشان يفضل ظاهر بعد الـ rerun
     result = st.session_state.get("result")
     if result:
         st.success(f"تمت معالجة {result['count']} ملف بنجاح")
-
-        # ---------- المعاينة ----------
-        files = result["files"]
-        with st.expander("👁️ معاينة النتيجة قبل التحميل", expanded=True):
-            idx = 0
-            if len(files) > 1:
-                idx = st.selectbox(
-                    "اختر الملف",
-                    options=list(range(len(files))),
-                    format_func=lambda i: f"{i + 1}. {files[i]['name']}",
-                    key="preview_file",
-                )
-
-            pages = get_page_count(files[idx]["data"])
-            page_no = 1
-            if pages > 1:
-                page_no = st.number_input(
-                    f"رقم الصفحة (من {pages})",
-                    min_value=1, max_value=pages, value=1, step=1,
-                    key=f"preview_page_{idx}",
-                )
-
-            st.image(
-                render_page(files[idx]["data"], page_no - 1),
-                caption=f"{files[idx]['name']} - صفحة {page_no}/{pages}",
-                use_container_width=True,
-            )
-
-        # ---------- التحميل ----------
         _, col_dl, _ = st.columns([1, 2, 1])
         with col_dl:
             st.download_button(

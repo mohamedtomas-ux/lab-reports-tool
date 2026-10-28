@@ -2,17 +2,51 @@ import fitz
 import streamlit as st
 from io import BytesIO
 import zipfile
+import os
 
-# إعدادات ثابتة ومضمونة
-OLD_HEADER_HEIGHT = 100  # ارتفاع الهيدر القديم
-OLD_FOOTER_HEIGHT = 150  # ارتفاع الفوتر القديم + QR Code + التوقيع
-NEW_HEADER_HEIGHT = 100  # ارتفاع الهيدر الجديد
-NEW_FOOTER_HEIGHT = 130  # ارتفاع الفوتر الجديد
+# إعدادات
+OLD_HEADER_HEIGHT = 100
+NEW_HEADER_HEIGHT = 100
+NEW_FOOTER_HEIGHT = 130
 
-def process_pdf(input_pdf_bytes, template_pdf_bytes):
+# اسم ملف الهيدر الثابت (لازم يكون موجود في نفس المجلد)
+TEMPLATE_FILE = "template.pdf"
+
+def detect_and_remove_qr_code(page):
+    """اكتشاف وإزالة QR Code فقط"""
+    try:
+        image_list = page.get_images(full=True)
+        
+        for img_index, img in enumerate(image_list):
+            xref = img[0]
+            img_rects = page.get_image_rects(xref)
+            
+            for rect in img_rects:
+                # لو الصورة في الجزء السفلي من الصفحة
+                if rect.y0 > page.rect.height * 0.75:
+                    width = rect.width
+                    height = rect.height
+                    
+                    # لو الصورة مربعة تقريباً وصغيرة (QR Code)
+                    if 0.7 < width/height < 1.3 and width < 120 and height < 120:
+                        margin = 10
+                        qr_rect = fitz.Rect(
+                            max(0, rect.x0 - margin),
+                            max(0, rect.y0 - margin),
+                            min(page.rect.width, rect.x1 + margin),
+                            min(page.rect.height, rect.y1 + margin)
+                        )
+                        page.add_redact_annot(qr_rect, fill=(1, 1, 1))
+        
+        page.apply_redactions()
+        
+    except Exception as e:
+        print(f"خطأ في اكتشاف QR Code: {e}")
+
+def process_pdf(input_pdf_bytes, template_path):
     """معالجة ملف PDF"""
     doc = fitz.open(stream=input_pdf_bytes, filetype="pdf")
-    template_doc = fitz.open(stream=template_pdf_bytes, filetype="pdf")
+    template_doc = fitz.open(template_path)
     template_page = template_doc[0]
     template_rect = template_page.rect
     template_width = template_rect.width
@@ -23,22 +57,20 @@ def process_pdf(input_pdf_bytes, template_pdf_bytes):
         page_width = page_rect.width
         page_height = page_rect.height
         
-        # 1. مسح الهيدر القديم (بيانات المعمل)
+        # 1. مسح الهيدر القديم
         header_rect = fitz.Rect(0, 0, page_width, OLD_HEADER_HEIGHT)
         page.add_redact_annot(header_rect, fill=(1, 1, 1))
         page.apply_redactions()
         
-        # 2. مسح الفوتر القديم + QR Code + التوقيع
-        footer_rect = fitz.Rect(0, page_height - OLD_FOOTER_HEIGHT, page_width, page_height)
-        page.add_redact_annot(footer_rect, fill=(1, 1, 1))
-        page.apply_redactions()
+        # 2. اكتشاف وإزالة QR Code فقط
+        detect_and_remove_qr_code(page)
         
-        # 3. إضافة الهيدر الجديد من ملف القالب
+        # 3. إضافة الهيدر الجديد
         new_header_rect = fitz.Rect(0, 0, page_width, NEW_HEADER_HEIGHT)
         header_clip = fitz.Rect(0, 0, template_width, NEW_HEADER_HEIGHT)
         page.show_pdf_page(new_header_rect, template_doc, 0, clip=header_clip)
         
-        # 4. إضافة الفوتر الجديد من ملف القالب
+        # 4. إضافة الفوتر الجديد
         new_footer_rect = fitz.Rect(0, page_height - NEW_FOOTER_HEIGHT, page_width, page_height)
         footer_clip = fitz.Rect(0, template_height - NEW_FOOTER_HEIGHT, template_width, template_height)
         page.show_pdf_page(new_footer_rect, template_doc, 0, clip=footer_clip)
@@ -58,22 +90,23 @@ def main():
     st.title("🏥 أداة تعديل هيدر نتائج المعمل")
     st.markdown("---")
     
-    col1, col2 = st.columns(2)
+    # التحقق من وجود ملف الهيدر الثابت
+    if not os.path.exists(TEMPLATE_FILE):
+        st.error(f"❌ ملف الهيدر الثابت غير موجود: {TEMPLATE_FILE}")
+        st.info("يرجى رفع ملف `template.pdf` إلى GitHub Repository")
+        return
     
-    with col1:
-        st.subheader("📁 رفع ملفات النتائج")
-        uploaded_files = st.file_uploader(
-            "اختر ملفات PDF للنتائج المعملية",
-            type="pdf",
-            accept_multiple_files=True
-        )
+    st.success("✅ ملف الهيدر الثابت جاهز للاستخدام")
+    st.markdown("---")
     
-    with col2:
-        st.subheader("📄 رفع ملف الهيدر الجديد")
-        template_file = st.file_uploader(
-            "اختر ملف PDF للهيدر الجديد",
-            type="pdf"
-        )
+    # رفع ملفات النتائج فقط
+    st.subheader("📁 رفع ملفات النتائج")
+    uploaded_files = st.file_uploader(
+        "اختر ملفات PDF للنتائج المعملية",
+        type="pdf",
+        accept_multiple_files=True,
+        help="يمكنك رفع عدد غير محدود من الملفات"
+    )
     
     st.markdown("---")
     
@@ -81,12 +114,6 @@ def main():
         if not uploaded_files:
             st.error("❌ يرجى رفع ملفات النتائج أولاً")
             return
-        
-        if not template_file:
-            st.error("❌ يرجى رفع ملف الهيدر الجديد")
-            return
-        
-        template_bytes = template_file.read()
         
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -99,7 +126,7 @@ def main():
             input_bytes = uploaded_file.read()
             
             try:
-                output_bytes = process_pdf(input_bytes, template_bytes)
+                output_bytes = process_pdf(input_bytes, TEMPLATE_FILE)
                 processed_files.append({
                     'name': uploaded_file.name,
                     'data': output_bytes

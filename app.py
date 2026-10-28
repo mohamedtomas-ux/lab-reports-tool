@@ -13,6 +13,17 @@ NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
 
+# قراءة اللوجو وتحويله إلى base64
+def get_logo_base64():
+    try:
+        with open(LOGO_FILE, "rb") as f:
+            logo_bytes = f.read()
+            return base64.b64encode(logo_bytes).decode()
+    except:
+        return None
+
+logo_base64 = get_logo_base64()
+
 # CSS للتصميم
 st.markdown("""
 <style>
@@ -95,29 +106,6 @@ st.markdown("""
         padding: 15px !important;
         margin: 10px 0 !important;
     }
-    .preview-box {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        margin-top: 15px;
-        border: 1px solid #e0e0e0;
-        text-align: center;
-    }
-    /* أزرار المعاينة والتحميل */
-    .action-btn {
-        background: #8B1A1A !important;
-        color: white !important;
-        border: none !important;
-        padding: 10px 25px !important;
-        border-radius: 8px !important;
-        font-weight: bold !important;
-        font-size: 1em !important;
-        cursor: pointer;
-        transition: all 0.3s ease !important;
-    }
-    .action-btn:hover {
-        background: #A52A2A !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,38 +169,26 @@ def process_pdf(input_pdf_bytes, template_path):
     
     return output_bytes.getvalue()
 
-def get_first_page_image(pdf_bytes):
-    try:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        page = doc[0]
-        pix = page.get_pixmap(dpi=150)
-        img_bytes = pix.tobytes("png")
-        doc.close()
-        return img_bytes
-    except Exception as e:
-        return None
-
 # الواجهة الرئيسية
 def main():
     st.set_page_config(
         page_title="برنامج الفحص الشامل",
-        page_icon="🏥",
+        page_icon="",
         layout="centered",
         initial_sidebar_state="collapsed"
     )
     
-    logo_exists = os.path.exists(LOGO_FILE)
     template_exists = os.path.exists(TEMPLATE_FILE)
     
     if not template_exists:
-        st.error("❌ ملف الهيدر الثابت غير موجود!")
+        st.error(" ملف الهيدر الثابت غير موجود!")
         return
     
-    # 1. اللوجو باستخدام HTML لضمان عدم القص
-    if logo_exists:
+    # 1. اللوجو باستخدام base64 (مضمون 100%)
+    if logo_base64:
         st.markdown(f"""
         <div style="text-align: center; margin: 10px 0;">
-            <img src="{LOGO_FILE}" style="max-width: 100%; height: auto; max-height: 120px;" />
+            <img src="data:image/png;base64,{logo_base64}" style="max-width: 100%; height: auto; max-height: 120px;" />
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -243,7 +219,7 @@ def main():
         st.markdown(f"""
         <div class="stats-bar">
             <div class="stat-badge">
-                <span>📄 الملفات:</span>
+                <span> الملفات:</span>
                 <span class="number">{len(uploaded_files)}</span>
             </div>
             <div class="stat-badge">
@@ -283,7 +259,7 @@ def main():
                     'size': len(output_bytes) / 1024
                 })
             except Exception as e:
-                st.error(f" خطأ في {uploaded_file.name}: {str(e)}")
+                st.error(f"❌ خطأ في {uploaded_file.name}: {str(e)}")
             
             progress_bar.progress((i + 1) / len(uploaded_files))
         
@@ -292,38 +268,34 @@ def main():
         
         st.success(f"✅ تم معالجة {len(processed_files)} ملف بنجاح!")
         
-        # 6. أزرار المعاينة والتحميل جنب بعض
         st.markdown("---")
-        st.subheader(" الملفات المعالجة")
         
-        for idx, file_info in enumerate(processed_files, 1):
-            st.markdown(f"**{idx}. {file_info['name']}** ({file_info['size']:.1f} KB)")
-            
-            # أزرار المعاينة والتحميل في نفس السطر
-            col_preview, col_download = st.columns(2)
-            
-            with col_preview:
-                if st.button(f"👁️ معاينة", key=f"preview_{idx}"):
-                    first_page_img = get_first_page_image(file_info['data'])
-                    if first_page_img:
-                        st.image(first_page_img, use_container_width=True, caption=f"معاينة: {file_info['name']}")
-                    else:
-                        st.warning("⚠️ تعذر إنشاء المعاينة")
-            
-            with col_download:
+        # 6. أزرار التحميل فقط (بدون معاينة)
+        st.subheader("📥 تحميل الملفات المعالجة")
+        
+        if len(processed_files) == 1:
+            st.download_button(
+                label=f"📥 تحميل {processed_files[0]['name']}",
+                data=processed_files[0]['data'],
+                file_name=processed_files[0]['name'],
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            # تحميل كل ملف على حدة
+            for idx, file_info in enumerate(processed_files, 1):
                 st.download_button(
-                    label=f"📥 تحميل",
+                    label=f" تحميل {idx}. {file_info['name']}",
                     data=file_info['data'],
                     file_name=file_info['name'],
                     mime="application/pdf",
                     use_container_width=True,
                     key=f"download_{idx}"
                 )
-        
-        st.markdown("---")
-        
-        # زر تحميل الكل كـ ZIP
-        if len(processed_files) > 1:
+            
+            st.markdown("---")
+            
+            # تحميل الكل كـ ZIP
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 for file_info in processed_files:
@@ -331,7 +303,7 @@ def main():
             zip_buffer.seek(0)
             
             st.download_button(
-                label=f"📦 تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
+                label=f" تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
                 data=zip_buffer.getvalue(),
                 file_name=f"reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
                 mime="application/zip",

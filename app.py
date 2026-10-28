@@ -5,35 +5,32 @@ import zipfile
 import os
 from datetime import datetime
 
-# ==========================================
 # إعدادات التطبيق
-# ==========================================
 OLD_HEADER_HEIGHT = 100
 NEW_HEADER_HEIGHT = 100
 NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
 
-# ==========================================
-# إعدادات التصميم المخصص (CSS)
-# ==========================================
+# CSS للتصميم
 st.markdown("""
 <style>
     /* إخفاء الشريط الجانبي */
-    [data-testid="stSidebar"] {
-        display: none;
+    [data-testid="stSidebar"] { display: none; }
+    [data-testid="stSidebarNav"] { display: none; }
+    
+    /* الخلفية بيضاء */
+    .stApp { background: #ffffff; }
+    
+    /* توسيط كل العناصر */
+    .centered {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
     }
     
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-    
-    /* الخلفية العامة - بيضاء نظيفة */
-    .stApp {
-        background: #ffffff;
-    }
-    
-    /* العنوان الرئيسي */
+    /* العنوان */
     .main-title {
         text-align: center;
         padding: 20px 0;
@@ -53,13 +50,14 @@ st.markdown("""
         color: #000000;
     }
     
-    /* بوكس رفع الملفات الموحد */
+    /* بوكس رفع الملفات */
     .upload-box {
         background: #f8f9fa;
         padding: 30px;
         border-radius: 15px;
         border: 2px dashed #8B1A1A;
-        margin-bottom: 30px;
+        margin: 30px auto;
+        max-width: 800px;
         text-align: right;
         direction: rtl;
     }
@@ -72,74 +70,14 @@ st.markdown("""
         font-weight: bold;
     }
     
-    .upload-box .small-hint {
+    .small-hint {
         color: #666;
         font-size: 0.9em;
-        margin-top: 0;
-        margin-bottom: 20px;
+        margin: 0;
         font-style: italic;
     }
     
-    /* بطاقات الإحصائيات */
-    .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 15px;
-        text-align: center;
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .stat-card.success {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4);
-    }
-    
-    .stat-card h2 {
-        margin: 0;
-        font-size: 2.5em;
-        font-weight: bold;
-    }
-    
-    .stat-card p {
-        margin: 5px 0 0 0;
-        font-size: 1.1em;
-        opacity: 0.95;
-    }
-    
-    /* شريط التقدم */
-    .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #8B1A1A 0%, #C41E3A 100%);
-    }
-    
-    /* الرسائل */
-    .success-message {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        text-align: center;
-        font-size: 1.2em;
-        font-weight: bold;
-        box-shadow: 0 5px 15px rgba(17, 153, 142, 0.3);
-    }
-    
-    /* قائمة الملفات */
-    .file-item {
-        background: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border-left: 4px solid #38ef7d;
-    }
-    
-    /* إخفاء "Made with Streamlit" */
-    footer {
-        visibility: hidden;
-    }
-    
-    /* تحسين الأزرار - أحمر */
+    /* زر المعالجة */
     .stButton > button {
         background: #8B1A1A !important;
         color: white !important;
@@ -158,7 +96,10 @@ st.markdown("""
         box-shadow: 0 8px 20px rgba(139, 26, 26, 0.4) !important;
     }
     
-    /* تحسين الـ uploader */
+    /* إخفاء footer */
+    footer { visibility: hidden; }
+    
+    /* uploader */
     .stFileUploader {
         background: transparent !important;
         border: none !important;
@@ -167,23 +108,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
 # دوال المعالجة
-# ==========================================
 def detect_and_remove_qr_code(page):
-    """اكتشاف وإزالة QR Code فقط"""
     try:
         image_list = page.get_images(full=True)
-        
         for img_index, img in enumerate(image_list):
             xref = img[0]
             img_rects = page.get_image_rects(xref)
-            
             for rect in img_rects:
                 if rect.y0 > page.rect.height * 0.75:
                     width = rect.width
                     height = rect.height
-                    
                     if 0.7 < width/height < 1.3 and width < 120 and height < 120:
                         margin = 10
                         qr_rect = fitz.Rect(
@@ -193,14 +128,11 @@ def detect_and_remove_qr_code(page):
                             min(page.rect.height, rect.y1 + margin)
                         )
                         page.add_redact_annot(qr_rect, fill=(1, 1, 1))
-        
         page.apply_redactions()
-        
     except Exception as e:
         print(f"خطأ في اكتشاف QR Code: {e}")
 
 def process_pdf(input_pdf_bytes, template_path):
-    """معالجة ملف PDF"""
     doc = fitz.open(stream=input_pdf_bytes, filetype="pdf")
     template_doc = fitz.open(template_path)
     template_page = template_doc[0]
@@ -213,20 +145,16 @@ def process_pdf(input_pdf_bytes, template_path):
         page_width = page_rect.width
         page_height = page_rect.height
         
-        # مسح الهيدر القديم
         header_rect = fitz.Rect(0, 0, page_width, OLD_HEADER_HEIGHT)
         page.add_redact_annot(header_rect, fill=(1, 1, 1))
         page.apply_redactions()
         
-        # اكتشاف وإزالة QR Code
         detect_and_remove_qr_code(page)
         
-        # إضافة الهيدر الجديد
         new_header_rect = fitz.Rect(0, 0, page_width, NEW_HEADER_HEIGHT)
         header_clip = fitz.Rect(0, 0, template_width, NEW_HEADER_HEIGHT)
         page.show_pdf_page(new_header_rect, template_doc, 0, clip=header_clip)
         
-        # إضافة الفوتر الجديد
         new_footer_rect = fitz.Rect(0, page_height - NEW_FOOTER_HEIGHT, page_width, page_height)
         footer_clip = fitz.Rect(0, template_height - NEW_FOOTER_HEIGHT, template_width, template_height)
         page.show_pdf_page(new_footer_rect, template_doc, 0, clip=footer_clip)
@@ -240,11 +168,8 @@ def process_pdf(input_pdf_bytes, template_path):
     
     return output_bytes.getvalue()
 
-# ==========================================
 # الواجهة الرئيسية
-# ==========================================
 def main():
-    # إعداد الصفحة
     st.set_page_config(
         page_title="برنامج الفحص الشامل - طباعة النتائج المعملية",
         page_icon="🏥",
@@ -252,9 +177,7 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # ==========================================
-    # التحقق من وجود اللوجو وملف القالب
-    # ==========================================
+    # التحقق من الملفات
     logo_exists = os.path.exists(LOGO_FILE)
     template_exists = os.path.exists(TEMPLATE_FILE)
     
@@ -264,17 +187,17 @@ def main():
         return
     
     # ==========================================
-    # عرض اللوجو في المنتصف باستخدام st.image
+    # اللوجو في النص بالظبط
     # ==========================================
     if logo_exists:
-        # نستخدم 3 أعمدة لتوسيط الصورة
-        col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
-        with col_logo2:
-            st.image(LOGO_FILE, width=450)
+        # استخدام columns للتوسيط المثالي
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            st.image(LOGO_FILE, use_container_width=True)
     else:
-        st.warning("️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
+        st.warning("⚠️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
     
-    # العنوان والوصف
+    # العنوان
     st.markdown("""
     <div class="main-title">
         <h1>برنامج الفحص الشامل - طباعة النتائج المعملية</h1>
@@ -283,206 +206,104 @@ def main():
     """, unsafe_allow_html=True)
     
     # ==========================================
-    # بوكس رفع الملفات الموحد
+    # بوكس رفع الملفات في النص
     # ==========================================
     st.markdown("""
-    <div class="upload-box">
-        <h2>📁 رفع ملفات النتائج</h2>
-        <p class="small-hint">يمكن اختيار أكثر من ملف</p>
+    <div style="text-align: center;">
+        <div class="upload-box">
+            <h2>📁 رفع ملفات النتائج</h2>
+            <p class="small-hint">يمكن اختيار أكثر من ملف</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
-    uploaded_files = st.file_uploader(
-        "",
-        type="pdf",
-        accept_multiple_files=True,
-        help="يمكنك رفع عدد غير محدود من الملفات",
-        label_visibility="collapsed"
-    )
+    # uploader في النص
+    col_up1, col_up2, col_up3 = st.columns([1, 3, 1])
+    with col_up2:
+        uploaded_files = st.file_uploader(
+            "",
+            type="pdf",
+            accept_multiple_files=True,
+            help="يمكنك رفع عدد غير محدود من الملفات",
+            label_visibility="collapsed"
+        )
     
     # ==========================================
-    # عرض إحصائيات الملفات المرفوعة
-    # ==========================================
-    if uploaded_files:
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="stat-card">
-                <h2>{len(uploaded_files)}</h2>
-                <p>ملفات مرفوعة</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            total_size = sum(f.size for f in uploaded_files) / (1024 * 1024)
-            st.markdown(f"""
-            <div class="stat-card">
-                <h2>{total_size:.1f}</h2>
-                <p>ميغابايت</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="stat-card success">
-                <h2>✓</h2>
-                <p>جاهز للمعالجة</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-    
-    # ==========================================
-    # زر المعالجة في منتصف الصفحة
+    # زر بدء المعالجة في النص بالظبط
     # ==========================================
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-    
     with col_btn2:
-        if st.button("بدء المعالجة"):
-            if not uploaded_files:
-                st.error("❌ يرجى رفع ملفات النتائج أولاً")
-                return
-            
-            # بدء المعالجة
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            processed_files = []
-            start_time = datetime.now()
-            
-            for i, uploaded_file in enumerate(uploaded_files):
-                status_text.markdown(f"""
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #8B1A1A; text-align: right; direction: rtl;">
-                    <strong>⚙️ جاري معالجة:</strong> {uploaded_file.name}<br>
-                    <small style="color: #666;">الملف {i+1} من {len(uploaded_files)}</small>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                input_bytes = uploaded_file.read()
-                
-                try:
-                    output_bytes = process_pdf(input_bytes, TEMPLATE_FILE)
-                    processed_files.append({
-                        'name': uploaded_file.name,
-                        'data': output_bytes,
-                        'size': len(output_bytes) / 1024
-                    })
-                except Exception as e:
-                    st.error(f"❌ خطأ في معالجة {uploaded_file.name}: {str(e)}")
-                
-                progress_bar.progress((i + 1) / len(uploaded_files))
-            
-            # حساب الوقت المستغرق
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-            
-            # ==========================================
-            # عرض النتائج
-            # ==========================================
-            status_text.empty()
-            progress_bar.empty()
-            
-            st.markdown("""
-            <div class="success-message">
-                ✅ اكتملت المعالجة بنجاح!
+        start_button = st.button("بدء المعالجة", use_container_width=True)
+    
+    if start_button:
+        if not uploaded_files:
+            st.error("❌ يرجى رفع ملفات النتائج أولاً")
+            return
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        processed_files = []
+        start_time = datetime.now()
+        
+        for i, uploaded_file in enumerate(uploaded_files):
+            status_text.markdown(f"""
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #8B1A1A; text-align: right; direction: rtl;">
+                <strong>⚙️ جاري معالجة:</strong> {uploaded_file.name}<br>
+                <small style="color: #666;">الملف {i+1} من {len(uploaded_files)}</small>
             </div>
             """, unsafe_allow_html=True)
             
-            st.markdown("<br>", unsafe_allow_html=True)
+            input_bytes = uploaded_file.read()
             
-            # إحصائيات المعالجة
-            col1, col2, col3 = st.columns(3)
+            try:
+                output_bytes = process_pdf(input_bytes, TEMPLATE_FILE)
+                processed_files.append({
+                    'name': uploaded_file.name,
+                    'data': output_bytes,
+                    'size': len(output_bytes) / 1024
+                })
+            except Exception as e:
+                st.error(f"❌ خطأ في معالجة {uploaded_file.name}: {str(e)}")
             
-            with col1:
-                st.markdown(f"""
-                <div class="stat-card success">
-                    <h2>{len(processed_files)}</h2>
-                    <p>ملفات تمت معالجتها</p>
-                </div>
-                """, unsafe_allow_html=True)
+            progress_bar.progress((i + 1) / len(uploaded_files))
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        status_text.empty()
+        progress_bar.empty()
+        
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.2em; font-weight: bold; margin: 20px 0;">
+            ✅ اكتملت المعالجة بنجاح!
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # تحميل الملفات
+        if len(processed_files) == 1:
+            st.download_button(
+                label=f"📥 تحميل {processed_files[0]['name']}",
+                data=processed_files[0]['data'],
+                file_name=processed_files[0]['name'],
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for file_info in processed_files:
+                    zip_file.writestr(file_info['name'], file_info['data'])
             
-            with col2:
-                st.markdown(f"""
-                <div class="stat-card">
-                    <h2>{duration:.1f}</h2>
-                    <p>ثانية</p>
-                </div>
-                """, unsafe_allow_html=True)
+            zip_buffer.seek(0)
             
-            with col3:
-                avg_time = duration / len(processed_files) if processed_files else 0
-                st.markdown(f"""
-                <div class="stat-card">
-                    <h2>{avg_time:.2f}</h2>
-                    <p>ثانية/ملف</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # ==========================================
-            # أزرار التحميل
-            # ==========================================
-            st.markdown("""
-            <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; margin-bottom: 20px; text-align: right; direction: rtl;">
-                <h2 style="color: #000000; margin-top: 0;">📥 تحميل الملفات</h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if len(processed_files) == 1:
-                st.download_button(
-                    label=f"📥 تحميل {processed_files[0]['name']}",
-                    data=processed_files[0]['data'],
-                    file_name=processed_files[0]['name'],
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            else:
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    zip_buffer = BytesIO()
-                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                        for file_info in processed_files:
-                            zip_file.writestr(file_info['name'], file_info['data'])
-                    
-                    zip_buffer.seek(0)
-                    
-                    st.download_button(
-                        label=f"📦 تحميل جميع الملفات ({len(processed_files)} ملف)",
-                        data=zip_buffer.getvalue(),
-                        file_name=f"processed_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                        mime="application/zip",
-                        use_container_width=True
-                    )
-                
-                with col2:
-                    st.markdown(f"""
-                    <div style="background: #f0f4f8; padding: 15px; border-radius: 10px; text-align: center;">
-                        <strong style="color: #8B1A1A;">💾 الحجم الكلي</strong><br>
-                        <span style="font-size: 1.5em; color: #38ef7d;">{sum(f['size'] for f in processed_files) / 1024:.1f} MB</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # ==========================================
-            # قائمة الملفات المعالجة
-            # ==========================================
-            st.markdown("### 📋 الملفات المعالجة")
-            
-            for idx, file_info in enumerate(processed_files, 1):
-                st.markdown(f"""
-                <div class="file-item">
-                    <div>
-                        <strong style="color: #000000;">{idx}. {file_info['name']}</strong><br>
-                        <small style="color: #666;">الحجم: {file_info['size']:.1f} KB</small>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            st.download_button(
+                label=f"📦 تحميل جميع الملفات ({len(processed_files)} ملف)",
+                data=zip_buffer.getvalue(),
+                file_name=f"processed_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
 
 if __name__ == "__main__":
     main()

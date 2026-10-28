@@ -1,10 +1,8 @@
 import fitz
 import streamlit as st
-import streamlit.components.v1 as components
 from io import BytesIO
 import zipfile
 import os
-import base64
 from datetime import datetime
 
 # إعدادات التطبيق
@@ -14,7 +12,7 @@ NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
 
-# CSS للتصميم المدمج (Compact)
+# CSS للتصميم المدمج والاحترافي
 st.markdown("""
 <style>
     /* إخفاء الشريط الجانبي */
@@ -24,14 +22,14 @@ st.markdown("""
     /* الخلفية بيضاء */
     .stApp { background: #ffffff; }
     
-    /* تقليل المسافات العامة في Streamlit */
+    /* تقليل المسافات العامة */
     .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
-        max-width: 1000px !important;
+        max-width: 900px !important;
     }
     
-    /* اللوجو - حجم صغير جداً */
+    /* اللوجو - الحجم الطبيعي بدون قص */
     .logo-wrapper {
         margin-top: 10px !important;
         margin-bottom: 5px !important;
@@ -41,57 +39,70 @@ st.markdown("""
     }
     
     .logo-wrapper img {
-        max-height: 70px !important; /* تصغير اللوجو */
+        max-height: none !important; /* إزالة القيد للسماح بالحجم الطبيعي */
         width: auto;
+        max-width: 100%;
     }
     
-    /* العنوان - حجم مضغوط */
+    /* العنوان */
     .main-title {
         text-align: center;
         padding: 0 !important;
         margin-top: 0 !important;
-        margin-bottom: 10px !important;
+        margin-bottom: 15px !important;
     }
     
     .main-title h1 {
         margin: 0 0 2px 0 !important;
-        font-size: 1.4em !important; /* تصغير العنوان */
+        font-size: 1.5em !important;
         font-weight: bold;
         color: #000000;
     }
     
     .main-title p {
         margin: 0 !important;
-        font-size: 0.8em !important;
+        font-size: 0.85em !important;
         color: #555555;
     }
     
-    /* بوكس رفع الملفات - مضغوط */
-    .upload-box {
+    /* شريط الإحصائيات الرقمي المصغر */
+    .stats-bar {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin: 10px 0 15px 0;
+        flex-wrap: wrap;
+    }
+    
+    .stat-badge {
         background: #f8f9fa;
-        padding: 10px 15px !important;
-        border-radius: 8px;
-        border: 2px dashed #8B1A1A;
-        margin: 5px auto 10px auto !important;
-        max-width: 600px;
-        text-align: right;
-        direction: rtl;
+        border: 1px solid #e0e0e0;
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 0.85em;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
-    .upload-box h2 {
-        color: #000000;
-        margin: 0 0 2px 0 !important;
-        font-size: 1.1em !important;
+    .stat-badge .number {
         font-weight: bold;
+        color: #8B1A1A;
+        font-size: 1.1em;
     }
     
-    .small-hint {
-        color: #666;
-        font-size: 0.75em !important;
-        margin: 0 !important;
+    .stat-badge.success {
+        background: #e8f5e9;
+        border-color: #c8e6c9;
     }
     
-    /* زر المعالجة - صغير ومدمج */
+    .stat-badge.success .number {
+        color: #2e7d32;
+    }
+    
+    /* زر المعالجة */
     .stButton > button {
         background: #8B1A1A !important;
         color: white !important;
@@ -112,43 +123,51 @@ st.markdown("""
     /* إخفاء footer */
     footer { visibility: hidden; }
     
-    /* uploader */
-    .stFileUploader {
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
+    /* uploader مخفي تماماً */
+    .stFileUploader { display: none !important; }
     
-    /* تقليل حجم الإحصائيات */
-    .stat-card {
-        padding: 8px !important;
+    /* زر رفع الملفات المخصص */
+    .custom-upload-btn {
+        background: #ffffff;
+        border: 2px dashed #8B1A1A;
         border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 10px auto;
+        max-width: 400px;
     }
     
-    .stat-card h2 { 
-        margin: 0; 
-        font-size: 1.5em !important; 
+    .custom-upload-btn:hover {
+        background: #fff5f5;
+        border-color: #A52A2A;
     }
     
-    .stat-card p { 
-        margin: 2px 0 0 0 !important; 
-        font-size: 0.8em !important; 
+    .custom-upload-btn p {
+        margin: 0;
+        color: #8B1A1A;
+        font-weight: bold;
+        font-size: 0.9em;
     }
     
-    /* تقليل المسافات بين الأعمدة */
-    .stColumn {
-        padding: 0 5px !important;
+    .custom-upload-btn small {
+        color: #666;
+        font-size: 0.75em;
+    }
+    
+    /* منطقة المعاينة */
+    .preview-box {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 15px;
+        border: 1px solid #e0e0e0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# دوال المعاينة والمعالجة
-def preview_pdf(pdf_bytes, height=400):
-    base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="{height}px" type="application/pdf" style="border: none; border-radius: 8px;"></iframe>'
-    components.html(pdf_display, height=height + 20, scrolling=True)
-
+# دوال المعالجة
 def detect_and_remove_qr_code(page):
     try:
         image_list = page.get_images(full=True)
@@ -208,12 +227,25 @@ def process_pdf(input_pdf_bytes, template_path):
     
     return output_bytes.getvalue()
 
+def get_first_page_image(pdf_bytes):
+    """تحويل الصفحة الأولى من PDF إلى صورة للمعاينة"""
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        page = doc[0]
+        # تحويل الصفحة لصورة بدقة عالية
+        pix = page.get_pixmap(dpi=150)
+        img_bytes = pix.tobytes("png")
+        doc.close()
+        return img_bytes
+    except Exception as e:
+        return None
+
 # الواجهة الرئيسية
 def main():
     st.set_page_config(
         page_title="برنامج الفحص الشامل",
         page_icon="🏥",
-        layout="centered",  # تغيير إلى centered لتقليل العرض الزائد
+        layout="centered",
         initial_sidebar_state="collapsed"
     )
     
@@ -224,15 +256,15 @@ def main():
         st.error("❌ ملف الهيدر الثابت غير موجود!")
         return
     
-    # 1. اللوجو (حجم صغير)
+    # 1. اللوجو (بدون قص)
     if logo_exists:
         col1, col2, col3 = st.columns([1, 4, 1])
         with col2:
-            st.image(LOGO_FILE, use_container_width=True)
+            st.markdown(f'<div class="logo-wrapper"><img src="{LOGO_FILE}" /></div>', unsafe_allow_html=True)
     else:
         st.warning("⚠️ اللوجو غير متوفر")
     
-    # 2. العنوان (مضغوط)
+    # 2. العنوان
     st.markdown("""
     <div class="main-title">
         <h1>برنامج الفحص الشامل - طباعة النتائج المعملية</h1>
@@ -240,52 +272,45 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # 3. بوكس رفع الملفات (مضغوط)
-    st.markdown("""
-    <div style="text-align: center;">
-        <div class="upload-box">
-            <h2> رفع ملفات النتائج</h2>
-            <p class="small-hint">يمكن اختيار أكثر من ملف</p>
+    # 3. زر الرفع المخفي + زر مخصص
+    uploaded_files = st.file_uploader(
+        "",
+        type="pdf",
+        accept_multiple_files=True,
+        label_visibility="collapsed",
+        key="uploader"
+    )
+    
+    # زر الرفع المصغر
+    if not uploaded_files:
+        st.markdown("""
+        <div class="custom-upload-btn" onclick="document.querySelector('input[type=file]').click()">
+            <p>📁 اضغط هنا لرفع ملفات النتائج</p>
+            <small>يمكن اختيار أكثر من ملف</small>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
-    col_up1, col_up2, col_up3 = st.columns([1, 4, 1])
-    with col_up2:
-        uploaded_files = st.file_uploader(
-            "",
-            type="pdf",
-            accept_multiple_files=True,
-            label_visibility="collapsed"
-        )
-    
-    # 4. إحصائيات الملفات المرفوعة (صغيرة)
+    # 4. شريط الإحصائيات الرقمي المصغر (يظهر بعد الرفع)
     if uploaded_files:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;">
-                <h2>{len(uploaded_files)}</h2>
-                <p>ملفات</p>
+        total_size = sum(f.size for f in uploaded_files) / (1024 * 1024)
+        st.markdown(f"""
+        <div class="stats-bar">
+            <div class="stat-badge">
+                <span>📄 الملفات:</span>
+                <span class="number">{len(uploaded_files)}</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            total_size = sum(f.size for f in uploaded_files) / (1024 * 1024)
-            st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;">
-                <h2>{total_size:.2f}</h2>
-                <p>ميغابايت</p>
+            <div class="stat-badge">
+                <span>💾 الحجم:</span>
+                <span class="number">{total_size:.2f} MB</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col3:
-            st.markdown("""
-            <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; text-align: center;">
-                <h2>✓</h2>
-                <p>جاهز</p>
+            <div class="stat-badge success">
+                <span>✅ الحالة:</span>
+                <span class="number">جاهز</span>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
     
-    # 5. زر المعالجة (صغير وفي المنتصف)
+    # 5. زر المعالجة
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         start_button = st.button("بدء المعالجة", use_container_width=True)
@@ -300,7 +325,7 @@ def main():
         processed_files = []
         
         for i, uploaded_file in enumerate(uploaded_files):
-            status_text.text(f"⚙️ جاري معالجة: {uploaded_file.name} ({i+1}/{len(uploaded_files)})")
+            status_text.text(f"⚙️ معالجة: {uploaded_file.name} ({i+1}/{len(uploaded_files)})")
             
             input_bytes = uploaded_file.read()
             try:
@@ -311,48 +336,49 @@ def main():
                     'size': len(output_bytes) / 1024
                 })
             except Exception as e:
-                st.error(f"❌ خطأ في معالجة {uploaded_file.name}: {str(e)}")
+                st.error(f"❌ خطأ في {uploaded_file.name}: {str(e)}")
             
             progress_bar.progress((i + 1) / len(uploaded_files))
         
         status_text.empty()
         progress_bar.empty()
         
-        st.success(f"✅ اكتملت المعالجة بنجاح! ({len(processed_files)} ملف)")
+        st.success(f"✅ تم معالجة {len(processed_files)} ملف بنجاح!")
         
-        # المعاينة والتحميل
+        # 6. المعاينة (صورة أول صفحة فقط - حل مشكلة Chrome)
         if len(processed_files) > 0:
-            st.markdown("---")
-            st.subheader("️ معاينة وتحميل")
-            
-            if len(processed_files) == 1:
-                st.download_button(
-                    label=f"📥 تحميل {processed_files[0]['name']}",
-                    data=processed_files[0]['data'],
-                    file_name=processed_files[0]['name'],
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                # معاينة الملف الوحيد
-                preview_pdf(processed_files[0]['data'], height=400)
+            st.markdown('<div class="preview-box"><h4 style="margin:0; color:#333;">👁️ معاينة أول صفحة من الملف الأول</h4></div>', unsafe_allow_html=True)
+            first_page_img = get_first_page_image(processed_files[0]['data'])
+            if first_page_img:
+                st.image(first_page_img, use_container_width=True)
             else:
-                zip_buffer = BytesIO()
-                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    for file_info in processed_files:
-                        zip_file.writestr(file_info['name'], file_info['data'])
-                zip_buffer.seek(0)
-                
-                st.download_button(
-                    label=f" تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
-                    data=zip_buffer.getvalue(),
-                    file_name=f"processed_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                    mime="application/zip",
-                    use_container_width=True
-                )
-                
-                # معاينة أول ملف فقط لتوفير المساحة
-                st.markdown(f"**معاينة أول ملف:** {processed_files[0]['name']}")
-                preview_pdf(processed_files[0]['data'], height=400)
+                st.warning("⚠️ تعذر إنشاء المعاينة")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 7. أزرار التحميل
+        if len(processed_files) == 1:
+            st.download_button(
+                label=f"📥 تحميل {processed_files[0]['name']}",
+                data=processed_files[0]['data'],
+                file_name=processed_files[0]['name'],
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for file_info in processed_files:
+                    zip_file.writestr(file_info['name'], file_info['data'])
+            zip_buffer.seek(0)
+            
+            st.download_button(
+                label=f"📦 تحميل الكل ({len(processed_files)} ملف) كـ ZIP",
+                data=zip_buffer.getvalue(),
+                file_name=f"reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
 
 if __name__ == "__main__":
     main()

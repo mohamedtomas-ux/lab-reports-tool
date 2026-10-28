@@ -3,6 +3,7 @@ import streamlit as st
 from io import BytesIO
 import zipfile
 import os
+import base64
 from datetime import datetime
 
 # إعدادات التطبيق
@@ -11,6 +12,16 @@ NEW_HEADER_HEIGHT = 100
 NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
+
+# دالة لقراءة اللوجو وتحويله إلى Base64
+def get_logo_base64():
+    try:
+        with open(LOGO_FILE, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return None
+
+logo_b64 = get_logo_base64()
 
 # CSS للتصميم
 st.markdown("""
@@ -169,15 +180,14 @@ def main():
     template_exists = os.path.exists(TEMPLATE_FILE)
     
     if not template_exists:
-        st.error(" ملف الهيدر الثابت غير موجود!")
+        st.error("❌ ملف الهيدر الثابت غير موجود!")
         return
     
-    # 1. اللوجو - عرض كامل بدون قص باستخدام HTML
-    logo_exists = os.path.exists(LOGO_FILE)
-    if logo_exists:
+    # 1. اللوجو باستخدام Base64 (مضمون 100%)
+    if logo_b64:
         st.markdown(f"""
         <div style="text-align: center; margin: 10px 0 15px 0;">
-            <img src="{LOGO_FILE}" style="width: 100%; max-width: 700px; height: auto; display: block; margin: 0 auto;" />
+            <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; height: auto; display: inline-block;" />
         </div>
         """, unsafe_allow_html=True)
     
@@ -253,9 +263,8 @@ def main():
         status_text.empty()
         progress_bar.empty()
         
-        # 6. زر التحميل (يظهر مباشرة بعد المعالجة بدون إشعار)
+        # 6. زر التحميل الأخضر
         if len(processed_files) > 0:
-            # تحضير البيانات للتحميل
             if len(processed_files) == 1:
                 download_data = processed_files[0]['data']
                 download_filename = processed_files[0]['name']
@@ -270,7 +279,6 @@ def main():
                 download_filename = f"reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
                 download_mime = "application/zip"
             
-            # زر التحميل الأخضر بنفس حجم وشكل زر بدء المعالجة
             col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
             with col_d2:
                 st.download_button(
@@ -279,13 +287,13 @@ def main():
                     file_name=download_filename,
                     mime=download_mime,
                     use_container_width=True,
-                    key="download_button"
+                    key="download_btn"
                 )
             
-            # CSS مخصص لجعل زر التحميل أخضر
+            # CSS لجعل زر التحميل أخضر
             st.markdown("""
             <style>
-                a[data-testid="stDownloadButton-download_button"] > button {
+                a[data-testid="stDownloadButton-download_btn"] button {
                     background: #2e7d32 !important;
                     color: white !important;
                     border: none !important;
@@ -293,14 +301,11 @@ def main():
                     border-radius: 8px !important;
                     font-weight: bold !important;
                     font-size: 1.1em !important;
-                    transition: all 0.3s ease !important;
                     box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3) !important;
-                    width: 100% !important;
                 }
-                a[data-testid="stDownloadButton-download_button"] > button:hover {
+                a[data-testid="stDownloadButton-download_btn"] button:hover {
                     background: #388e3c !important;
                     transform: translateY(-2px) !important;
-                    box-shadow: 0 5px 12px rgba(46, 125, 50, 0.4) !important;
                 }
             </style>
             """, unsafe_allow_html=True)

@@ -33,15 +33,15 @@ st.markdown("""
         background: #ffffff;
     }
     
-    /* العنوان الرئيسي - بدون خلفية زرقاء */
+    /* العنوان الرئيسي */
     .main-title {
         text-align: center;
-        padding: 30px 20px;
-        margin-bottom: 30px;
+        padding: 20px 0;
+        margin-bottom: 20px;
     }
     
     .main-title h1 {
-        margin: 20px 0 10px 0;
+        margin: 15px 0 10px 0;
         font-size: 2.5em;
         font-weight: bold;
         color: #000000;
@@ -51,19 +51,6 @@ st.markdown("""
         margin: 10px 0 0 0;
         font-size: 1.1em;
         color: #000000;
-    }
-    
-    /* حاوية اللوجو في النص */
-    .logo-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    
-    .logo-wrapper img {
-        max-height: 180px;
-        width: auto;
     }
     
     /* بوكس رفع الملفات الموحد */
@@ -91,11 +78,6 @@ st.markdown("""
         margin-top: 0;
         margin-bottom: 20px;
         font-style: italic;
-    }
-    
-    /* إخفاء المسافة بين العنوان والـ uploader */
-    .upload-box + div[data-testid="stFileUploader"] {
-        margin-top: -20px !important;
     }
     
     /* بطاقات الإحصائيات */
@@ -150,9 +132,6 @@ st.markdown("""
         margin-bottom: 10px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         border-left: 4px solid #38ef7d;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
     }
     
     /* إخفاء "Made with Streamlit" */
@@ -160,7 +139,7 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* تحسين الأزرار - أحمر وصغير وفي النص */
+    /* تحسين الأزرار - أحمر */
     .stButton > button {
         background: #8B1A1A !important;
         color: white !important;
@@ -171,8 +150,6 @@ st.markdown("""
         font-size: 1.8em !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 5px 15px rgba(139, 26, 26, 0.3) !important;
-        width: auto !important;
-        min-width: 350px !important;
     }
     
     .stButton > button:hover {
@@ -186,19 +163,6 @@ st.markdown("""
         background: transparent !important;
         border: none !important;
         padding: 0 !important;
-    }
-    
-    /* زر التحميل */
-    .download-btn {
-        background: #8B1A1A !important;
-        color: white !important;
-    }
-    
-    /* توسيط الأزرار */
-    .center-button {
-        display: flex;
-        justify-content: center;
-        margin: 30px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -300,18 +264,15 @@ def main():
         return
     
     # ==========================================
-    # العنوان الرئيسي مع اللوجو في النص
+    # عرض اللوجو في المنتصف باستخدام st.image
     # ==========================================
-    
-    # عرض اللوجو في النص باستخدام HTML
     if logo_exists:
-        st.markdown(f"""
-        <div class="logo-wrapper">
-            <img src="{LOGO_FILE}" alt="Dr. Osman Hospital Logo" />
-        </div>
-        """, unsafe_allow_html=True)
+        # نستخدم 3 أعمدة لتوسيط الصورة
+        col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+        with col_logo2:
+            st.image(LOGO_FILE, width=450)
     else:
-        st.warning("⚠️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
+        st.warning("️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
     
     # العنوان والوصف
     st.markdown("""
@@ -322,7 +283,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # ==========================================
-    # بوكس رفع الملفات الموحد (العنوان + uploader)
+    # بوكس رفع الملفات الموحد
     # ==========================================
     st.markdown("""
     <div class="upload-box">
@@ -375,12 +336,12 @@ def main():
         st.markdown("<br>", unsafe_allow_html=True)
     
     # ==========================================
-    # زر المعالجة - أحمر وصغير
+    # زر المعالجة في منتصف الصفحة
     # ==========================================
-    col_center, _, _ = st.columns([1, 2, 1])
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     
-    with col_center:
-        if st.button(" بدء المعالجة", type="primary"):
+    with col_btn2:
+        if st.button("بدء المعالجة"):
             if not uploaded_files:
                 st.error("❌ يرجى رفع ملفات النتائج أولاً")
                 return
@@ -472,7 +433,6 @@ def main():
             """, unsafe_allow_html=True)
             
             if len(processed_files) == 1:
-                # ملف واحد
                 st.download_button(
                     label=f"📥 تحميل {processed_files[0]['name']}",
                     data=processed_files[0]['data'],
@@ -481,7 +441,6 @@ def main():
                     use_container_width=True
                 )
             else:
-                # ملفات متعددة - ZIP
                 col1, col2 = st.columns([2, 1])
                 
                 with col1:
@@ -493,7 +452,7 @@ def main():
                     zip_buffer.seek(0)
                     
                     st.download_button(
-                        label=f" تحميل جميع الملفات ({len(processed_files)} ملف)",
+                        label=f"📦 تحميل جميع الملفات ({len(processed_files)} ملف)",
                         data=zip_buffer.getvalue(),
                         file_name=f"processed_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
                         mime="application/zip",

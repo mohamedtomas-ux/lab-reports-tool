@@ -30,8 +30,9 @@ CSS = """
         max-width: 900px !important;
     }
 
+    /* تعديل حجم اللوجو ليكون أصغر ومضمون عدم القص */
     .logo-wrap { text-align: center; margin: 10px 0 15px 0; }
-    .logo-wrap img { width: 100%; max-width: 700px; height: auto; }
+    .logo-wrap img { max-width: 250px !important; height: auto !important; display: block; margin: 0 auto; }
 
     .main-title { text-align: center; direction: rtl; margin: 5px 0 15px 0; }
     .main-title h1 { margin: 5px 0 2px 0 !important; font-size: 1.6em !important; font-weight: 700; color: #000; }
@@ -257,10 +258,9 @@ def main():
         else:
             st.session_state.pop("result", None)
 
-    # زر التحميل خارج if عشان يفضل ظاهر بعد الـ rerun
+    # زر التحميل يظهر مباشرة بعد المعالجة بدون رسالة نجاح
     result = st.session_state.get("result")
     if result:
-        st.success(f"تمت معالجة {result['count']} ملف بنجاح")
         _, col_dl, _ = st.columns([1, 2, 1])
         with col_dl:
             st.download_button(

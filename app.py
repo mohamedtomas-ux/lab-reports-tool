@@ -1,3 +1,6 @@
+تمام! هقلل المسافات الفارغة عشان الواجهة تظهر كاملة على الشاشة. حدّث ملف `app.py` بالكود ده:
+
+```python
 import fitz
 import streamlit as st
 from io import BytesIO
@@ -12,7 +15,7 @@ NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
 
-# CSS للتصميم
+# CSS للتصميم - مسافات مضغوطة
 st.markdown("""
 <style>
     /* إخفاء الشريط الجانبي */
@@ -22,41 +25,39 @@ st.markdown("""
     /* الخلفية بيضاء */
     .stApp { background: #ffffff; }
     
-    /* توسيط كل العناصر */
-    .centered {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
+    /* تقليل المسافات العامة */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
     }
     
     /* العنوان */
     .main-title {
         text-align: center;
-        padding: 20px 0;
-        margin-bottom: 20px;
+        padding: 10px 0;
+        margin-bottom: 10px;
     }
     
     .main-title h1 {
-        margin: 15px 0 10px 0;
-        font-size: 2.5em;
+        margin: 5px 0;
+        font-size: 2em;
         font-weight: bold;
         color: #000000;
     }
     
     .main-title p {
-        margin: 10px 0 0 0;
-        font-size: 1.1em;
+        margin: 5px 0;
+        font-size: 1em;
         color: #000000;
     }
     
     /* بوكس رفع الملفات */
     .upload-box {
         background: #f8f9fa;
-        padding: 30px;
-        border-radius: 15px;
+        padding: 15px 20px;
+        border-radius: 10px;
         border: 2px dashed #8B1A1A;
-        margin: 30px auto;
+        margin: 10px auto;
         max-width: 800px;
         text-align: right;
         direction: rtl;
@@ -64,15 +65,14 @@ st.markdown("""
     
     .upload-box h2 {
         color: #000000;
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 1.8em;
+        margin: 0 0 5px 0;
+        font-size: 1.4em;
         font-weight: bold;
     }
     
     .small-hint {
         color: #666;
-        font-size: 0.9em;
+        font-size: 0.85em;
         margin: 0;
         font-style: italic;
     }
@@ -82,18 +82,18 @@ st.markdown("""
         background: #8B1A1A !important;
         color: white !important;
         border: none !important;
-        padding: 20px 60px !important;
-        border-radius: 12px !important;
+        padding: 12px 40px !important;
+        border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 1.8em !important;
+        font-size: 1.3em !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 5px 15px rgba(139, 26, 26, 0.3) !important;
+        box-shadow: 0 3px 10px rgba(139, 26, 26, 0.3) !important;
     }
     
     .stButton > button:hover {
         background: #A52A2A !important;
         transform: translateY(-2px) !important;
-        box-shadow: 0 8px 20px rgba(139, 26, 26, 0.4) !important;
+        box-shadow: 0 5px 15px rgba(139, 26, 26, 0.4) !important;
     }
     
     /* إخفاء footer */
@@ -104,6 +104,21 @@ st.markdown("""
         background: transparent !important;
         border: none !important;
         padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* تقليل المسافات بين العناصر */
+    .stMarkdown {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* تقليل حجم الإحصائيات */
+    .stat-card {
+        padding: 10px;
+    }
+    
+    .stat-card h2 {
+        font-size: 1.8em;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -186,11 +201,8 @@ def main():
         st.info(f"يرجى رفع ملف `{TEMPLATE_FILE}` إلى GitHub Repository")
         return
     
-    # ==========================================
-    # اللوجو في النص بالظبط
-    # ==========================================
+    # اللوجو في النص
     if logo_exists:
-        # استخدام columns للتوسيط المثالي
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
             st.image(LOGO_FILE, use_container_width=True)
@@ -205,9 +217,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # ==========================================
-    # بوكس رفع الملفات في النص
-    # ==========================================
+    # بوكس رفع الملفات
     st.markdown("""
     <div style="text-align: center;">
         <div class="upload-box">
@@ -217,7 +227,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # uploader في النص
+    # uploader
     col_up1, col_up2, col_up3 = st.columns([1, 3, 1])
     with col_up2:
         uploaded_files = st.file_uploader(
@@ -228,9 +238,7 @@ def main():
             label_visibility="collapsed"
         )
     
-    # ==========================================
-    # زر بدء المعالجة في النص بالظبط
-    # ==========================================
+    # زر بدء المعالجة
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         start_button = st.button("بدء المعالجة", use_container_width=True)
@@ -248,7 +256,7 @@ def main():
         
         for i, uploaded_file in enumerate(uploaded_files):
             status_text.markdown(f"""
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #8B1A1A; text-align: right; direction: rtl;">
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-right: 4px solid #8B1A1A; text-align: right; direction: rtl;">
                 <strong>⚙️ جاري معالجة:</strong> {uploaded_file.name}<br>
                 <small style="color: #666;">الملف {i+1} من {len(uploaded_files)}</small>
             </div>
@@ -275,7 +283,7 @@ def main():
         progress_bar.empty()
         
         st.markdown("""
-        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; font-size: 1.2em; font-weight: bold; margin: 20px 0;">
+        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 1.1em; font-weight: bold; margin: 10px 0;">
             ✅ اكتملت المعالجة بنجاح!
         </div>
         """, unsafe_allow_html=True)
@@ -307,3 +315,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
+
+## ✅ التعديلات اللي عملتها:
+
+1. **تقليل padding في العنوان الرئيسي** من 30px لـ 10px
+2. **تقليل margin بين العناصر** من 20-30px لـ 5-10px
+3. **تقليل حجم الخط** في العنوان من 2.5em لـ 2em
+4. **تقليل padding في بوكس رفع الملفات** من 30px لـ 15px
+5. **تقليل حجم زر المعالجة** من 1.8em لـ 1.3em
+6. **تقليل حجم الإحصائيات** بعد المعالجة
+7. **تقليل المسافات بين رسائل الحالة** أثناء المعالجة
+
+الواجهة دلوقتي **مضغوطة أكثر** وهتظهر على الشاشة بدون ما تحتاج تمرير كتير.
+
+**حدّث الكود وقولي النتيجة!** 🚀

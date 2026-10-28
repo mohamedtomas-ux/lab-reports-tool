@@ -2,79 +2,14 @@ import fitz
 import streamlit as st
 from io import BytesIO
 import zipfile
-import numpy as np
-from PIL import Image
 
-# إعدادات
-NEW_HEADER_HEIGHT = 100
-NEW_FOOTER_HEIGHT = 130
-SIGNATURE_HEIGHT = 80
+# إعدادات ثابتة ومضمونة
+OLD_HEADER_HEIGHT = 100  # ارتفاع الهيدر القديم
+OLD_FOOTER_HEIGHT = 150  # ارتفاع الفوتر القديم + QR Code + التوقيع
+NEW_HEADER_HEIGHT = 100  # ارتفاع الهيدر الجديد
+NEW_FOOTER_HEIGHT = 130  # ارتفاع الفوتر الجديد
 
-def detect_qr_code_simple(page):
-    """اكتشاف QR Code باستخدام PyMuPDF فقط - بدون OpenCV"""
-    try:
-        qr_rects = []
-        
-        # البحث عن الصور في الصفحة
-        image_list = page.get_images(full=True)
-        
-        for img_index, img in enumerate(image_list):
-            xref = img[0]
-            
-            # الحصول على موقع الصورة في الصفحة
-            img_rects = page.get_image_rects(xref)
-            
-            for rect in img_rects:
-                # لو الصورة في الجزء السفلي من الصفحة (أكثر من 70% من ارتفاع الصفحة)
-                if rect.y0 > page.rect.height * 0.7:
-                    width = rect.width
-                    height = rect.height
-                    
-                    # لو الصورة مربعة تقريباً (QR Code عادة مربع) وصغيرة
-                    if 0.7 < width/height < 1.3 and width < 150 and height < 150:
-                        # إضافة هامش حول الـ QR Code
-                        margin = 15
-                        qr_rect = fitz.Rect(
-                            max(0, rect.x0 - margin),
-                            max(0, rect.y0 - margin),
-                            min(page.rect.width, rect.x1 + margin),
-                            min(page.rect.height, rect.y1 + margin)
-                        )
-                        qr_rects.append(qr_rect)
-        
-        return qr_rects
-    except Exception as e:
-        print(f"خطأ في اكتشاف QR Code: {e}")
-        return []
-
-def extract_signature_region(page):
-    """استخراج منطقة التوقيع من نهاية الصفحة"""
-    try:
-        page_height = page.rect.height
-        
-        # منطقة التوقيع (فوق الفوتر القديم)
-        sig_rect = fitz.Rect(
-            0,
-            page_height - 200,  # من 200 نقطة من الأسفل
-            page.rect.width,
-            page_height - 130   # إلى 130 نقطة من الأسفل
-        )
-        
-        # استخراج المنطقة كصورة
-        pix = page.get_pixmap(clip=sig_rect, dpi=150)
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        
-        # تحويل لـ PNG bytes
-        buffer = BytesIO()
-        img.save(buffer, format='PNG')
-        buffer.seek(0)
-        
-        return buffer.getvalue()
-    except Exception as e:
-        print(f"خطأ في استخراج التوقيع: {e}")
-        return None
-
-def process_pdf(input_pdf_bytes, template_pdf_bytes, old_header_height=95):
+def process_pdf(input_pdf_bytes, template_pdf_bytes):
     """معالجة ملف PDF"""
     doc = fitz.open(stream=input_pdf_bytes, filetype="pdf")
     template_doc = fitz.open(stream=template_pdf_bytes, filetype="pdf")
@@ -88,50 +23,25 @@ def process_pdf(input_pdf_bytes, template_pdf_bytes, old_header_height=95):
         page_width = page_rect.width
         page_height = page_rect.height
         
-        # 1. استخراج التوقيع من الصفحة الأصلية (قبل المسح)
-        signature_bytes = extract_signature_region(page)
-        
-        # 2. مسح الهيدر القديم
-        header_rect = fitz.Rect(0, 0, page_width, old_header_height)
+        # 1. مسح الهيدر القديم (بيانات المعمل)
+        header_rect = fitz.Rect(0, 0, page_width, OLD_HEADER_HEIGHT)
         page.add_redact_annot(header_rect, fill=(1, 1, 1))
         page.apply_redactions()
         
-        # 3. اكتشاف وإزالة QR Code تلقائياً
-        qr_rects = detect_qr_code_simple(page)
-        for qr_rect in qr_rects:
-            page.add_redact_annot(qr_rect, fill=(1, 1, 1))
-        if qr_rects:
-            page.apply_redactions()
-        
-        # 4. مسح منطقة التوقيع الأصلية
-        sig_rect = fitz.Rect(
-            0,
-            page_height - 200,
-            page_width,
-            page_height - 130
-        )
-        page.add_redact_annot(sig_rect, fill=(1, 1, 1))
+        # 2. مسح الفوتر القديم + QR Code + التوقيع
+        footer_rect = fitz.Rect(0, page_height - OLD_FOOTER_HEIGHT, page_width, page_height)
+        page.add_redact_annot(footer_rect, fill=(1, 1, 1))
         page.apply_redactions()
         
-        # 5. إضافة الهيدر الجديد
+        # 3. إضافة الهيدر الجديد من ملف القالب
         new_header_rect = fitz.Rect(0, 0, page_width, NEW_HEADER_HEIGHT)
         header_clip = fitz.Rect(0, 0, template_width, NEW_HEADER_HEIGHT)
         page.show_pdf_page(new_header_rect, template_doc, 0, clip=header_clip)
         
-        # 6. إضافة الفوتر الجديد
+        # 4. إضافة الفوتر الجديد من ملف القالب
         new_footer_rect = fitz.Rect(0, page_height - NEW_FOOTER_HEIGHT, page_width, page_height)
         footer_clip = fitz.Rect(0, template_height - NEW_FOOTER_HEIGHT, template_width, template_height)
         page.show_pdf_page(new_footer_rect, template_doc, 0, clip=footer_clip)
-        
-        # 7. إضافة التوقيع المستخرج فوق الفوتر الجديد
-        if signature_bytes:
-            sig_insert_rect = fitz.Rect(
-                0,
-                page_height - NEW_FOOTER_HEIGHT - SIGNATURE_HEIGHT,
-                page_width,
-                page_height - NEW_FOOTER_HEIGHT
-            )
-            page.insert_image(sig_insert_rect, stream=signature_bytes)
     
     output_bytes = BytesIO()
     doc.save(output_bytes, deflate=True, garbage=4)
@@ -147,16 +57,6 @@ def main():
     
     st.title("🏥 أداة تعديل هيدر نتائج المعمل")
     st.markdown("---")
-    
-    with st.sidebar:
-        st.header("⚙️ الإعدادات")
-        old_header = st.number_input("ارتفاع الهيدر القديم", value=95, min_value=50, max_value=200)
-        new_header = st.number_input("ارتفاع الهيدر الجديد", value=100, min_value=50, max_value=200)
-        new_footer = st.number_input("ارتفاع الفوتر الجديد", value=130, min_value=50, max_value=200)
-        
-        global NEW_HEADER_HEIGHT, NEW_FOOTER_HEIGHT
-        NEW_HEADER_HEIGHT = new_header
-        NEW_FOOTER_HEIGHT = new_footer
     
     col1, col2 = st.columns(2)
     
@@ -199,7 +99,7 @@ def main():
             input_bytes = uploaded_file.read()
             
             try:
-                output_bytes = process_pdf(input_bytes, template_bytes, old_header)
+                output_bytes = process_pdf(input_bytes, template_bytes)
                 processed_files.append({
                     'name': uploaded_file.name,
                     'data': output_bytes

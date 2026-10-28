@@ -311,12 +311,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        '<div style="text-align:center;margin-bottom:5px;"><strong style="color:#333;font-size:1.1em;">'
-        '📁 رفع ملفات النتائج</strong><br><small style="color:#666;">يمكن اختيار أكثر من ملف</small></div>',
-        unsafe_allow_html=True,
-    )
-
     uploaded_files = st.file_uploader(
         "رفع الملفات", type="pdf", accept_multiple_files=True,
         label_visibility="collapsed",

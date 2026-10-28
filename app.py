@@ -7,18 +7,14 @@ import os
 import base64
 from datetime import datetime
 
-# ==========================================
 # إعدادات التطبيق
-# ==========================================
 OLD_HEADER_HEIGHT = 100
 NEW_HEADER_HEIGHT = 100
 NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = "template.pdf"
 LOGO_FILE = "logo.png"
 
-# ==========================================
-# إعدادات التصميم المخصص (CSS)
-# ==========================================
+# CSS للتصميم المدمج (Compact)
 st.markdown("""
 <style>
     /* إخفاء الشريط الجانبي */
@@ -28,96 +24,89 @@ st.markdown("""
     /* الخلفية بيضاء */
     .stApp { background: #ffffff; }
     
-    /* حاوية اللوجو - إنزاله سطر وتقليل المسافة للعنوان */
+    /* تقليل المسافات العامة في Streamlit */
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 1000px !important;
+    }
+    
+    /* اللوجو - حجم صغير جداً */
     .logo-wrapper {
-        margin-top: 40px !important;
-        margin-bottom: 10px !important;
+        margin-top: 10px !important;
+        margin-bottom: 5px !important;
         display: flex;
         justify-content: center;
         align-items: center;
     }
     
-    /* العنوان الرئيسي */
+    .logo-wrapper img {
+        max-height: 70px !important; /* تصغير اللوجو */
+        width: auto;
+    }
+    
+    /* العنوان - حجم مضغوط */
     .main-title {
         text-align: center;
         padding: 0 !important;
         margin-top: 0 !important;
-        margin-bottom: 20px !important;
+        margin-bottom: 10px !important;
     }
     
     .main-title h1 {
-        margin: 0 0 5px 0;
-        font-size: 2.2em;
+        margin: 0 0 2px 0 !important;
+        font-size: 1.4em !important; /* تصغير العنوان */
         font-weight: bold;
         color: #000000;
     }
     
     .main-title p {
-        margin: 0;
-        font-size: 1em;
+        margin: 0 !important;
+        font-size: 0.8em !important;
         color: #555555;
     }
     
-    /* بوكس رفع الملفات */
+    /* بوكس رفع الملفات - مضغوط */
     .upload-box {
         background: #f8f9fa;
-        padding: 20px;
-        border-radius: 12px;
+        padding: 10px 15px !important;
+        border-radius: 8px;
         border: 2px dashed #8B1A1A;
-        margin: 20px auto;
-        max-width: 800px;
+        margin: 5px auto 10px auto !important;
+        max-width: 600px;
         text-align: right;
         direction: rtl;
     }
     
     .upload-box h2 {
         color: #000000;
-        margin: 0 0 5px 0;
-        font-size: 1.5em;
+        margin: 0 0 2px 0 !important;
+        font-size: 1.1em !important;
         font-weight: bold;
     }
     
     .small-hint {
         color: #666;
-        font-size: 0.85em;
-        margin: 0;
-        font-style: italic;
+        font-size: 0.75em !important;
+        margin: 0 !important;
     }
     
-    /* بطاقات الإحصائيات */
-    .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stat-card.success {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
-    }
-    
-    .stat-card h2 { margin: 0; font-size: 2em; font-weight: bold; }
-    .stat-card p { margin: 5px 0 0 0; font-size: 0.95em; opacity: 0.95; }
-    
-    /* زر المعالجة */
+    /* زر المعالجة - صغير ومدمج */
     .stButton > button {
         background: #8B1A1A !important;
         color: white !important;
         border: none !important;
-        padding: 15px 50px !important;
-        border-radius: 10px !important;
+        padding: 8px 30px !important;
+        border-radius: 6px !important;
         font-weight: bold !important;
-        font-size: 1.4em !important;
+        font-size: 1em !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 12px rgba(139, 26, 26, 0.3) !important;
+        box-shadow: 0 2px 5px rgba(139, 26, 26, 0.3) !important;
     }
     
     .stButton > button:hover {
         background: #A52A2A !important;
-        transform: translateY(-2px) !important;
+        transform: translateY(-1px) !important;
     }
     
     /* إخفاء footer */
@@ -131,22 +120,31 @@ st.markdown("""
         margin: 0 !important;
     }
     
-    /* حاوية المعاينة */
-    .preview-container {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-        margin-bottom: 20px;
+    /* تقليل حجم الإحصائيات */
+    .stat-card {
+        padding: 8px !important;
+        border-radius: 8px;
+    }
+    
+    .stat-card h2 { 
+        margin: 0; 
+        font-size: 1.5em !important; 
+    }
+    
+    .stat-card p { 
+        margin: 2px 0 0 0 !important; 
+        font-size: 0.8em !important; 
+    }
+    
+    /* تقليل المسافات بين الأعمدة */
+    .stColumn {
+        padding: 0 5px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
 # دوال المعاينة والمعالجة
-# ==========================================
-def preview_pdf(pdf_bytes, height=500):
-    """دالة لعرض ملف PDF داخل الصفحة"""
+def preview_pdf(pdf_bytes, height=400):
     base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
     pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="{height}px" type="application/pdf" style="border: none; border-radius: 8px;"></iframe>'
     components.html(pdf_display, height=height + 20, scrolling=True)
@@ -210,35 +208,31 @@ def process_pdf(input_pdf_bytes, template_path):
     
     return output_bytes.getvalue()
 
-# ==========================================
 # الواجهة الرئيسية
-# ==========================================
 def main():
     st.set_page_config(
-        page_title="برنامج الفحص الشامل - طباعة النتائج المعملية",
-        page_icon="",
-        layout="wide",
+        page_title="برنامج الفحص الشامل",
+        page_icon="🏥",
+        layout="centered",  # تغيير إلى centered لتقليل العرض الزائد
         initial_sidebar_state="collapsed"
     )
     
-    # التحقق من الملفات
     logo_exists = os.path.exists(LOGO_FILE)
     template_exists = os.path.exists(TEMPLATE_FILE)
     
     if not template_exists:
         st.error("❌ ملف الهيدر الثابت غير موجود!")
-        st.info(f"يرجى رفع ملف `{TEMPLATE_FILE}` إلى GitHub Repository")
         return
     
-    # 1. اللوجو (تم إنزاله سطر)
+    # 1. اللوجو (حجم صغير)
     if logo_exists:
-        col1, col2, col3 = st.columns([1, 3, 1])
+        col1, col2, col3 = st.columns([1, 4, 1])
         with col2:
             st.image(LOGO_FILE, use_container_width=True)
     else:
-        st.warning("⚠️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
+        st.warning("⚠️ اللوجو غير متوفر")
     
-    # 2. العنوان (ملاصق للوجو)
+    # 2. العنوان (مضغوط)
     st.markdown("""
     <div class="main-title">
         <h1>برنامج الفحص الشامل - طباعة النتائج المعملية</h1>
@@ -246,7 +240,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # 3. بوكس رفع الملفات
+    # 3. بوكس رفع الملفات (مضغوط)
     st.markdown("""
     <div style="text-align: center;">
         <div class="upload-box">
@@ -256,49 +250,42 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    col_up1, col_up2, col_up3 = st.columns([1, 3, 1])
+    col_up1, col_up2, col_up3 = st.columns([1, 4, 1])
     with col_up2:
         uploaded_files = st.file_uploader(
             "",
             type="pdf",
             accept_multiple_files=True,
-            help="يمكنك رفع عدد غير محدود من الملفات",
             label_visibility="collapsed"
         )
     
-    # 4. إحصائيات الملفات المرفوعة (تظهر فوراً)
+    # 4. إحصائيات الملفات المرفوعة (صغيرة)
     if uploaded_files:
-        st.markdown("<br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
-        
         with col1:
             st.markdown(f"""
-            <div class="stat-card">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;">
                 <h2>{len(uploaded_files)}</h2>
-                <p>عدد الملفات المرفوعة</p>
+                <p>ملفات</p>
             </div>
             """, unsafe_allow_html=True)
-        
         with col2:
             total_size = sum(f.size for f in uploaded_files) / (1024 * 1024)
             st.markdown(f"""
-            <div class="stat-card">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;">
                 <h2>{total_size:.2f}</h2>
-                <p>الحجم الكلي (MB)</p>
+                <p>ميغابايت</p>
             </div>
             """, unsafe_allow_html=True)
-        
         with col3:
             st.markdown("""
-            <div class="stat-card success">
+            <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; text-align: center;">
                 <h2>✓</h2>
-                <p>جاهز للمعالجة</p>
+                <p>جاهز</p>
             </div>
             """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
     
-    # 5. زر المعالجة
+    # 5. زر المعالجة (صغير وفي المنتصف)
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         start_button = st.button("بدء المعالجة", use_container_width=True)
@@ -311,15 +298,9 @@ def main():
         progress_bar = st.progress(0)
         status_text = st.empty()
         processed_files = []
-        start_time = datetime.now()
         
         for i, uploaded_file in enumerate(uploaded_files):
-            status_text.markdown(f"""
-            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-right: 4px solid #8B1A1A; text-align: right; direction: rtl;">
-                <strong>⚙️ جاري معالجة:</strong> {uploaded_file.name}<br>
-                <small style="color: #666;">الملف {i+1} من {len(uploaded_files)}</small>
-            </div>
-            """, unsafe_allow_html=True)
+            status_text.text(f"⚙️ جاري معالجة: {uploaded_file.name} ({i+1}/{len(uploaded_files)})")
             
             input_bytes = uploaded_file.read()
             try:
@@ -334,78 +315,27 @@ def main():
             
             progress_bar.progress((i + 1) / len(uploaded_files))
         
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
-        
         status_text.empty()
         progress_bar.empty()
         
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.2em; font-weight: bold; margin: 20px 0;">
-            ✅ اكتملت المعالجة بنجاح!
-        </div>
-        """, unsafe_allow_html=True)
+        st.success(f"✅ اكتملت المعالجة بنجاح! ({len(processed_files)} ملف)")
         
-        # إحصائيات المعالجة
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"""
-            <div class="stat-card success">
-                <h2>{len(processed_files)}</h2>
-                <p>ملفات تمت معالجتها</p>
-            </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"""
-            <div class="stat-card">
-                <h2>{duration:.1f}</h2>
-                <p>ثانية (الوقت المستغرق)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # 6. ميزة المعاينة (Preview) قبل التحميل
-        st.markdown("""
-        <div class="preview-container">
-            <h3 style="color: #000; margin-top: 0; text-align: right; direction: rtl;">️ معاينة النتيجة قبل التحميل</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        # المعاينة والتحميل
         if len(processed_files) > 0:
-            preview_col1, preview_col2 = st.columns([1, 3])
-            with preview_col1:
-                file_names = [f['name'] for f in processed_files]
-                selected_name = st.selectbox("اختر ملف للمعاينة:", file_names, label_visibility="collapsed")
-                selected_file = next((f for f in processed_files if f['name'] == selected_name), None)
+            st.markdown("---")
+            st.subheader("️ معاينة وتحميل")
             
-            with preview_col2:
-                if selected_file:
-                    # تحذير إذا كان الملف كبيراً جداً
-                    if selected_file['size'] > 5000: # أكبر من 5 ميجا
-                        st.warning("⚠️ الملف كبير جداً، قد تستغرق المعاينة وقتاً طويلاً.")
-                    preview_pdf(selected_file['data'], height=500)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # 7. أزرار التحميل
-        st.markdown("""
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: right; direction: rtl;">
-            <h3 style="color: #000; margin: 0;">📥 تحميل الملفات</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if len(processed_files) == 1:
-            st.download_button(
-                label=f"📥 تحميل {processed_files[0]['name']}",
-                data=processed_files[0]['data'],
-                file_name=processed_files[0]['name'],
-                mime="application/pdf",
-                use_container_width=True
-            )
-        else:
-            col1, col2 = st.columns([2, 1])
-            with col1:
+            if len(processed_files) == 1:
+                st.download_button(
+                    label=f"📥 تحميل {processed_files[0]['name']}",
+                    data=processed_files[0]['data'],
+                    file_name=processed_files[0]['name'],
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                # معاينة الملف الوحيد
+                preview_pdf(processed_files[0]['data'], height=400)
+            else:
                 zip_buffer = BytesIO()
                 with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                     for file_info in processed_files:
@@ -413,19 +343,16 @@ def main():
                 zip_buffer.seek(0)
                 
                 st.download_button(
-                    label=f"📦 تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
+                    label=f" تحميل جميع الملفات ({len(processed_files)} ملف) كـ ZIP",
                     data=zip_buffer.getvalue(),
                     file_name=f"processed_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
                     mime="application/zip",
                     use_container_width=True
                 )
-            with col2:
-                st.markdown(f"""
-                <div style="background: #f0f4f8; padding: 15px; border-radius: 10px; text-align: center; margin-top: 10px;">
-                    <strong style="color: #8B1A1A;">💾 الحجم الكلي</strong><br>
-                    <span style="font-size: 1.4em; color: #38ef7d; font-weight: bold;">{sum(f['size'] for f in processed_files) / 1024:.2f} MB</span>
-                </div>
-                """, unsafe_allow_html=True)
+                
+                # معاينة أول ملف فقط لتوفير المساحة
+                st.markdown(f"**معاينة أول ملف:** {processed_files[0]['name']}")
+                preview_pdf(processed_files[0]['data'], height=400)
 
 if __name__ == "__main__":
     main()

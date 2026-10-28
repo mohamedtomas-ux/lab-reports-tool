@@ -3,7 +3,6 @@ import streamlit as st
 from io import BytesIO
 import zipfile
 import os
-import base64
 from datetime import datetime
 
 # ==========================================
@@ -54,40 +53,49 @@ st.markdown("""
         color: #000000;
     }
     
-    .logo-container {
-        margin-bottom: 20px;
+    /* حاوية اللوجو في النص */
+    .logo-wrapper {
         display: flex;
         justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
     }
     
-    .logo-container img {
+    .logo-wrapper img {
         max-height: 180px;
         width: auto;
     }
     
-    /* قسم رفع الملفات - على اليمين */
-    .upload-section {
-        text-align: right;
-        direction: rtl;
+    /* بوكس رفع الملفات الموحد */
+    .upload-box {
         background: #f8f9fa;
-        padding: 25px;
+        padding: 30px;
         border-radius: 15px;
         border: 2px dashed #8B1A1A;
         margin-bottom: 30px;
+        text-align: right;
+        direction: rtl;
     }
     
-    .upload-section h2 {
+    .upload-box h2 {
         color: #000000;
         margin-top: 0;
+        margin-bottom: 10px;
         font-size: 1.8em;
         font-weight: bold;
     }
     
-    .small-hint {
+    .upload-box .small-hint {
         color: #666;
         font-size: 0.9em;
-        margin-top: 5px;
+        margin-top: 0;
+        margin-bottom: 20px;
         font-style: italic;
+    }
+    
+    /* إخفاء المسافة بين العنوان والـ uploader */
+    .upload-box + div[data-testid="stFileUploader"] {
+        margin-top: -20px !important;
     }
     
     /* بطاقات الإحصائيات */
@@ -152,19 +160,19 @@ st.markdown("""
         visibility: hidden;
     }
     
-    /* تحسين الأزرار - أحمر وصغير */
+    /* تحسين الأزرار - أحمر وصغير وفي النص */
     .stButton > button {
         background: #8B1A1A !important;
         color: white !important;
         border: none !important;
-        padding: 15px 40px !important;
-        border-radius: 10px !important;
+        padding: 20px 60px !important;
+        border-radius: 12px !important;
         font-weight: bold !important;
-        font-size: 1.3em !important;
+        font-size: 1.8em !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 5px 15px rgba(139, 26, 26, 0.3) !important;
         width: auto !important;
-        min-width: 250px !important;
+        min-width: 350px !important;
     }
     
     .stButton > button:hover {
@@ -175,16 +183,22 @@ st.markdown("""
     
     /* تحسين الـ uploader */
     .stFileUploader {
-        background: white;
-        padding: 20px;
-        border-radius: 15px;
-        border: 2px dashed #8B1A1A;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
     }
     
     /* زر التحميل */
     .download-btn {
         background: #8B1A1A !important;
         color: white !important;
+    }
+    
+    /* توسيط الأزرار */
+    .center-button {
+        display: flex;
+        justify-content: center;
+        margin: 30px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -286,12 +300,16 @@ def main():
         return
     
     # ==========================================
-    # العنوان الرئيسي مع اللوجو
+    # العنوان الرئيسي مع اللوجو في النص
     # ==========================================
     
-    # عرض اللوجو باستخدام st.image (يضمن ظهوره)
+    # عرض اللوجو في النص باستخدام HTML
     if logo_exists:
-        st.image(LOGO_FILE, width=400)
+        st.markdown(f"""
+        <div class="logo-wrapper">
+            <img src="{LOGO_FILE}" alt="Dr. Osman Hospital Logo" />
+        </div>
+        """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ اللوجو غير متوفر - يرجى رفع ملف logo.png")
     
@@ -304,10 +322,10 @@ def main():
     """, unsafe_allow_html=True)
     
     # ==========================================
-    # منطقة رفع الملفات - على اليمين
+    # بوكس رفع الملفات الموحد (العنوان + uploader)
     # ==========================================
     st.markdown("""
-    <div class="upload-section">
+    <div class="upload-box">
         <h2>📁 رفع ملفات النتائج</h2>
         <p class="small-hint">يمكن اختيار أكثر من ملف</p>
     </div>
@@ -317,7 +335,8 @@ def main():
         "",
         type="pdf",
         accept_multiple_files=True,
-        help="يمكنك رفع عدد غير محدود من الملفات"
+        help="يمكنك رفع عدد غير محدود من الملفات",
+        label_visibility="collapsed"
     )
     
     # ==========================================

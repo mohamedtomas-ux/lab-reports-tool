@@ -4,7 +4,7 @@ import zipfile
 from datetime import datetime
 from io import BytesIO
 
-import fitz
+import fitz  # PyMuPDF
 import streamlit as st
 
 # ---------------- الإعدادات ----------------
@@ -15,70 +15,77 @@ NEW_FOOTER_HEIGHT = 130
 TEMPLATE_FILE = os.path.join(BASE_DIR, "template.pdf")
 LOGO_FILE = os.path.join(BASE_DIR, "logo.png")
 
-CSS = """
+# عرض اللوجو الأقصى بالبكسل (غيّر الرقم براحتك)
+LOGO_MAX_WIDTH = 320
+
+CSS = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
 
-    html, body, .stApp, [class*="css"] { font-family: 'Cairo', sans-serif; }
-    [data-testid="stSidebar"], [data-testid="stSidebarNav"] { display: none; }
-    .stApp { background: #ffffff; }
-    footer, #MainMenu { visibility: hidden; }
+    html, body, .stApp, [class*="css"] {{ font-family: 'Cairo', sans-serif; }}
+    [data-testid="stSidebar"], [data-testid="stSidebarNav"] {{ display: none; }}
+    .stApp {{ background: #ffffff; }}
+    footer, #MainMenu {{ visibility: hidden; }}
+    header[data-testid="stHeader"] {{ display: none !important; }}
+    [data-testid="stToolbar"], [data-testid="stDecoration"] {{ display: none !important; }}
 
-    .block-container {
-        padding-top: 0.5rem !important;
+    .block-container {{
+        padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
         max-width: 900px !important;
-    }
+    }}
 
-    /* اللوجو: ضمان الظهور الكامل بدون أي قص */
-    .logo-wrap { 
-        text-align: center; 
-        margin: 10px 0 10px 0; 
-        padding: 0;
-    }
-    .logo-wrap img { 
-        max-width: 100% !important; 
-        width: auto !important;
-        height: auto !important; 
-        max-height: none !important; /* إزالة أي قيد على الارتفاع يمنع القص */
-        display: block !important; 
-        margin: 0 auto !important;
-        object-fit: contain !important;
-    }
+    /* اللوجو: أصغر، متوسّط، وبنفس النسبة بدون قص */
+    .logo-wrap {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 6px 0 10px 0;
+        overflow: visible;
+    }}
+    .logo-wrap img {{
+        width: auto;
+        height: auto;
+        max-width: min(100%, {LOGO_MAX_WIDTH}px);
+        max-height: none;
+        object-fit: contain;
+        display: block;
+    }}
 
-    .main-title { text-align: center; direction: rtl; margin: 5px 0 15px 0; }
-    .main-title h1 { margin: 5px 0 2px 0 !important; font-size: 1.6em !important; font-weight: 700; color: #000; }
-    .main-title p  { margin: 0 !important; font-size: 0.9em !important; color: #555; }
+    .main-title {{ text-align: center; direction: rtl; margin: 5px 0 15px 0; }}
+    .main-title h1 {{ margin: 5px 0 2px 0 !important; font-size: 1.6em !important; font-weight: 700; color: #000; }}
+    .main-title p  {{ margin: 0 !important; font-size: 0.9em !important; color: #555; }}
 
-    .stats-bar { display: flex; justify-content: center; gap: 12px; margin: 10px 0 15px 0; flex-wrap: wrap; direction: rtl; }
-    .stat-badge {
+    .stats-bar {{ display: flex; justify-content: center; gap: 12px; margin: 10px 0 15px 0; flex-wrap: wrap; direction: rtl; }}
+    .stat-badge {{
         background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 20px;
         padding: 6px 18px; font-size: 0.9em; color: #333;
         display: flex; align-items: center; gap: 6px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .stat-badge .number { font-weight: 700; color: #8B1A1A; font-size: 1.1em; }
-    .stat-badge.success { background: #e8f5e9; border-color: #c8e6c9; }
-    .stat-badge.success .number { color: #2e7d32; }
+    }}
+    .stat-badge .number {{ font-weight: 700; color: #8B1A1A; font-size: 1.1em; }}
+    .stat-badge.success {{ background: #e8f5e9; border-color: #c8e6c9; }}
+    .stat-badge.success .number {{ color: #2e7d32; }}
 
-    .stFileUploader {
+    .stFileUploader {{
         background: #fafafa; border: 2px dashed #8B1A1A;
         border-radius: 10px; padding: 15px !important; margin: 10px 0 !important;
-    }
+    }}
 
     /* زر المعالجة (أحمر) */
-    .stButton > button {
+    .stButton > button {{
         background: #8B1A1A !important; color: #fff !important; border: none !important;
         padding: 12px 40px !important; border-radius: 8px !important;
         font-weight: 700 !important; font-size: 1.1em !important;
         transition: all .3s ease !important;
         box-shadow: 0 3px 8px rgba(139,26,26,.3) !important;
-    }
-    .stButton > button:hover { background: #A52A2A !important; transform: translateY(-2px) !important; }
+    }}
+    .stButton > button:hover {{ background: #A52A2A !important; transform: translateY(-2px) !important; }}
+    .stButton > button:disabled {{ background: #c9a0a0 !important; box-shadow: none !important; }}
 
-    /* زر التحميل (أخضر صلب) - نفس أبعاد زر المعالجة تماماً */
+    /* زر التحميل (أخضر صلب) */
     [data-testid="stDownloadButton"] button,
-    .st-key-download_button button {
+    .st-key-download_button button {{
         background: #2e7d32 !important;
         background-color: #2e7d32 !important;
         color: #ffffff !important;
@@ -90,17 +97,17 @@ CSS = """
         opacity: 1 !important;
         transition: all .3s ease !important;
         box-shadow: 0 3px 8px rgba(46,125,50,.3) !important;
-    }
+    }}
     [data-testid="stDownloadButton"] button p,
     [data-testid="stDownloadButton"] button span,
-    .st-key-download_button button p { color: #ffffff !important; }
+    .st-key-download_button button p {{ color: #ffffff !important; }}
     [data-testid="stDownloadButton"] button:hover,
-    .st-key-download_button button:hover {
+    .st-key-download_button button:hover {{
         background: #388e3c !important;
         background-color: #388e3c !important;
         transform: translateY(-2px) !important;
         box-shadow: 0 5px 12px rgba(46,125,50,.4) !important;
-    }
+    }}
 </style>
 """
 
@@ -142,19 +149,14 @@ def process_pdf(input_pdf_bytes, template_path):
         for page in doc:
             pw, ph = page.rect.width, page.rect.height
 
-            # مسح الهيدر القديم
             page.add_redact_annot(fitz.Rect(0, 0, pw, OLD_HEADER_HEIGHT), fill=(1, 1, 1))
             page.apply_redactions()
-            
-            # مسح QR Code
             detect_and_remove_qr_code(page)
 
-            # إضافة الهيدر الجديد
             page.show_pdf_page(
                 fitz.Rect(0, 0, pw, NEW_HEADER_HEIGHT), template_doc, 0,
                 clip=fitz.Rect(0, 0, t_w, NEW_HEADER_HEIGHT),
             )
-            # إضافة الفوتر الجديد
             page.show_pdf_page(
                 fitz.Rect(0, ph - NEW_FOOTER_HEIGHT, pw, ph), template_doc, 0,
                 clip=fitz.Rect(0, t_h - NEW_FOOTER_HEIGHT, t_w, t_h),
@@ -175,7 +177,7 @@ def build_download(processed):
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for f in processed:
             name, n = f["name"], 1
-            while name in used:
+            while name in used:  # منع تكرار الأسماء داخل الـ ZIP
                 base, ext = os.path.splitext(f["name"])
                 name = f"{base}_{n}{ext}"
                 n += 1
@@ -199,7 +201,7 @@ def main():
         st.error("❌ ملف الهيدر الثابت (template.pdf) غير موجود!")
         return
 
-    # 1. اللوجو (باستخدام Base64 لضمان عدم القص نهائياً)
+    # اللوجو
     if os.path.exists(LOGO_FILE):
         mime, b64 = image_to_base64(LOGO_FILE)
         st.markdown(
@@ -207,7 +209,6 @@ def main():
             unsafe_allow_html=True,
         )
 
-    # 2. العنوان
     st.markdown(
         """
         <div class="main-title">
@@ -218,7 +219,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # 3. منطقة الرفع
     st.markdown(
         '<div style="text-align:center;margin-bottom:5px;"><strong style="color:#333;font-size:1.1em;">'
         '📁 رفع ملفات النتائج</strong><br><small style="color:#666;">يمكن اختيار أكثر من ملف</small></div>',
@@ -230,7 +230,6 @@ def main():
         label_visibility="collapsed", key="main_uploader",
     )
 
-    # 4. شريط الإحصائيات
     if uploaded_files:
         total_size = sum(f.size for f in uploaded_files) / (1024 * 1024)
         st.markdown(
@@ -244,14 +243,12 @@ def main():
             unsafe_allow_html=True,
         )
 
-    # 5. زر المعالجة
     _, col_btn, _ = st.columns([1, 2, 1])
     with col_btn:
         start_button = st.button(
             "بدء المعالجة", use_container_width=True, disabled=not uploaded_files
         )
 
-    # 6. منطق المعالجة
     if start_button and uploaded_files:
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -280,13 +277,13 @@ def main():
         else:
             st.session_state.pop("result", None)
 
-    # 7. زر التحميل (يظهر مباشرة بعد المعالجة بدون رسالة نجاح)
+    # زر التحميل خارج الـ if عشان يفضل ظاهر بعد أي rerun
     result = st.session_state.get("result")
     if result:
         _, col_dl, _ = st.columns([1, 2, 1])
         with col_dl:
             st.download_button(
-                label="التحميل",
+                label="⬇️ التحميل",
                 data=result["data"],
                 file_name=result["name"],
                 mime=result["mime"],
